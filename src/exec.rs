@@ -1,15 +1,22 @@
 use anyhow::Result;
+use std::io::{BufRead, BufReader, Error, ErrorKind};
+use std::process::{Command, Stdio};
 
-use std::process::Command;
+pub fn execute(cmd: &str) -> Result<()> {
+    let stdout = Command::new("sh")
+        .arg("-c")
+        .arg(cmd)
+        .stdout(Stdio::piped())
+        .spawn()?
+        .stdout
+        .ok_or_else(|| Error::new(ErrorKind::Other, "Could not capture standard output"))?;
 
-pub fn execute(cmd: &str, args: Vec<&str>) -> Result<()> {
-    let output = Command::new(cmd).args(args).output()?;
+    let reader = BufReader::new(stdout);
 
-    if !output.status.success() {
-        anyhow::bail!("Failed to execute: {}", String::from_utf8(output.stderr)?);
-    }
-
-    println!("{:?}", String::from_utf8(output.stdout)?);
+    reader
+        .lines()
+        .filter_map(|line| line.ok())
+        .for_each(|line| println!("{}", line));
 
     Ok(())
 }
