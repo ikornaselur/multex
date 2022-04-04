@@ -1,9 +1,12 @@
 [package]
 name = "multex"
-version = "0.1.0"
+authors = ["Axel <dev@absalon.is>"]
+description = "Run multiple commands concurrently"
+repository = "https://github.com/ikornaselur/multex"
+license = "MIT"
+readme = "README.md"
+version = "0.0.1"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 anyhow = "1.0.56"
