@@ -1,8 +1,8 @@
 mod exec;
 
-use exec::execute;
-
 use clap::Parser;
+use exec::execute;
+use std::thread;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -17,5 +17,15 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    args.command.iter().for_each(|cmd| execute(cmd).expect(""));
+    let mut handles: Vec<_> = Vec::new();
+
+    for command in args.command {
+        handles.push(thread::spawn(move || {
+            execute(&command).unwrap();
+        }));
+    }
+
+    for process in handles {
+        process.join().unwrap();
+    }
 }
