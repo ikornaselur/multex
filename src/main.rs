@@ -1,7 +1,7 @@
-mod exec;
-
+use anyhow::Result;
 use clap::Parser;
-use exec::execute;
+use std::io::{BufRead, BufReader, Error, ErrorKind};
+use std::process::{Command, Stdio};
 use std::thread;
 
 #[derive(Parser, Debug)]
@@ -14,18 +14,34 @@ struct Args {
     command: Vec<String>,
 }
 
-fn main() {
+fn main() -> Result<()> {
     let args = Args::parse();
 
     let mut handles: Vec<_> = Vec::new();
 
     for command in args.command {
-        handles.push(thread::spawn(move || {
-            execute(&command).unwrap();
+        handles.push(thread::spawn(move || -> Result<()> {
+            let stdout = Command::new("sh")
+                .arg("-c")
+                .arg(command)
+                .stdout(Stdio::piped())
+                .spawn()?
+                .stdout
+                .ok_or_else(|| Error::new(ErrorKind::Other, "Could not capture standard output"))?;
+
+            let reader = BufReader::new(stdout);
+
+            reader
+                .lines()
+                .filter_map(|line| line.ok())
+                .for_each(|line| println!("{}", line));
+            Ok(())
         }));
     }
 
     for process in handles {
-        process.join().unwrap();
+        process.join().expect("Failed to join thread")?;
     }
+
+    Ok(())
 }
