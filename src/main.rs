@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::io::{BufRead, BufReader, Error, ErrorKind};
 use std::process::{Command, Stdio};
 use std::thread;
@@ -16,11 +17,17 @@ struct Args {
 
 fn main() -> Result<()> {
     let args = Args::parse();
+    let spinner_style = ProgressStyle::default_spinner()
+        .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
+        .template("{prefix:.bold.dim} {spinner} {wide_msg}");
 
-    let mut handles: Vec<_> = Vec::new();
-
+    let mp = MultiProgress::new();
     for command in args.command {
-        handles.push(thread::spawn(move || -> Result<()> {
+        let pb = mp.add(ProgressBar::new(1));
+        pb.set_style(spinner_style.clone());
+        pb.set_prefix(format!("{}:", command));
+
+        let _ = thread::spawn(move || -> Result<()> {
             let stdout = Command::new("sh")
                 .arg("-c")
                 .arg(command)
@@ -34,14 +41,15 @@ fn main() -> Result<()> {
             reader
                 .lines()
                 .filter_map(|line| line.ok())
-                .for_each(|line| println!("{}", line));
+                .for_each(|line| {
+                    pb.set_message(line);
+                });
+            pb.finish_with_message("Done!");
             Ok(())
-        }));
+        });
     }
 
-    for process in handles {
-        process.join().expect("Failed to join thread")?;
-    }
+    mp.join().unwrap();
 
     Ok(())
 }
